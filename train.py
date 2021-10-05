@@ -10,39 +10,39 @@ from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split
 
 PARAMS = {'boosting_type': 'gbdt',
-         'objective': 'multiclass',
-         'num_class': 3,
-         'num_leaves': 8,
-         'learning_rate': 0.01,
-         'feature_fraction': 0.9,
-         'seed': 1234
-         }
+          'objective': 'multiclass',
+          'num_class': 3,
+          'num_leaves': 8,
+          'learning_rate': 0.01,
+          'feature_fraction': 0.9,
+          'seed': 1234
+          }
 NUM_BOOSTING_ROUNDS = 10
 
 data = load_wine()
 X_train, X_test, y_train, y_test = train_test_split(data.data,
-                                                   data.target,
-                                                   test_size=0.25,
-                                                   random_state=1234)
+                                                    data.target,
+                                                    test_size=0.25,
+                                                    random_state=1234)
 lgb_train = lgb.Dataset(X_train, y_train)
 lgb_eval = lgb.Dataset(X_test, y_test, reference=lgb_train)
 
 # Connect your script to Neptune
 neptune.init(api_token=os.getenv('NEPTUNE_API_TOKEN'),
-            project_qualified_name=os.getenv('NEPTUNE_PROJECT_NAME'))
+             project_qualified_name=os.getenv('NEPTUNE_PROJECT_NAME'))
 
 # Create an experiment and log hyperparameters
 neptune.create_experiment('lightGBM-on-wine',
-                         params={**PARAMS,
-                                 'num_boosting_round': NUM_BOOSTING_ROUNDS})
+                          params={**PARAMS,
+                                  'num_boosting_round': NUM_BOOSTING_ROUNDS})
 
 gbm = lgb.train(PARAMS,
-               lgb_train,
-               num_boost_round=NUM_BOOSTING_ROUNDS,
-               valid_sets=[lgb_train, lgb_eval],
-               valid_names=['train', 'valid'],
-               callbacks=[neptune_monitor()],  # monitor learning curves
-               )
+                lgb_train,
+                num_boost_round=NUM_BOOSTING_ROUNDS,
+                valid_sets=[lgb_train, lgb_eval],
+                valid_names=['train', 'valid'],
+                callbacks=[neptune_monitor()],  # monitor learning curves
+                )
 y_test_pred = gbm.predict(X_test)
 
 f1 = f1_score(y_test, y_test_pred.argmax(axis=1), average='macro')
